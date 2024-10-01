@@ -1,7 +1,7 @@
 ## AnyDetect 👋
 NetFlow Anomaly Detection Script
-<!--
-This script listens for NetFlow packets, processes them, and detects anomalies using machine learning models. It supports initial training, real-time prediction, and scheduled retraining of models.
+
+This project provides a Python-based script that listens for NetFlow packets, processes them, and detects anomalies using machine learning models. It supports initial model training, real-time anomaly detection, and scheduled retraining of the model. The system is built using scikit-learn for anomaly detection and leverages the IsolationForest algorithm for detecting anomalous network traffic patterns. This script listens for NetFlow packets, processes them, and detects anomalies using machine learning models. It supports initial training, real-time prediction, and scheduled retraining of models.
 
 Here are some ideas to get you started:
 
