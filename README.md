@@ -1,7 +1,7 @@
 ## AnyDetect 👋
 NetFlow Anomaly Detection Script
 <!--
-**anydetect/anydetect** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+This script listens for NetFlow packets, processes them, and detects anomalies using machine learning models. It supports initial training, real-time prediction, and scheduled retraining of models.
 
 Here are some ideas to get you started:
 
