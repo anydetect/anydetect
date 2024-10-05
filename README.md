@@ -25,7 +25,7 @@ Logging: The script logs its progress and outputs useful debugging information u
 ~~~
 
 
-response1.py Description:
+action_script.py Description:
 
 ~~~
 The provided Python script is designed to remotely manage a switch port on a FortiGate device based on an IP address by:
