@@ -3,6 +3,40 @@ NetFlow Anomaly Detection Script by_ML_
 
 This project provides a Python-based script that listens for NetFlow packets, processes them, and detects anomalies using machine learning models. It supports initial model training, real-time anomaly detection, and scheduled retraining of the model. The system is built using scikit-learn for anomaly detection and leverages the IsolationForest algorithm for detecting anomalous network traffic patterns. This script listens for NetFlow packets, processes them, and detects anomalies using machine learning models. It supports initial training, real-time prediction, and scheduled retraining of models.
 
+
+
+any_detect.py description:
+
+~~~
+NetFlow Packet Collection: The script listens for incoming NetFlow packets on a specified IP address and port (in this case, 127.0.0.1:2055), collects them, and processes the flow data.
+
+Anomaly Detection: The script uses three machine learning models to detect anomalies in the NetFlow data:
+
+Isolation Forest: Used for detecting anomalies in the network traffic.
+Local Outlier Factor (LOF): A novelty detection algorithm.
+XGBoost: A powerful gradient boosting classifier.
+Initial Training: If no pre-trained models are found (IsolationForestModel.pkl, LocalOutlayerModel.pkl, XgbModel.pkl, and Model_scaler.pkl), the script collects a certain number of NetFlow packets (packeges_to_learn = 1,000,000) and trains the models for the first time. Once trained, the models are saved to disk for future use.
+
+Real-Time Prediction: The script processes incoming NetFlow data in real-time, and the trained models are used to predict whether the data contains any anomalies.
+
+Scheduled Retraining: The script can retrain the models at regular intervals (every 2 hours by default) using newly collected data.
+
+Logging: The script logs its progress and outputs useful debugging information using Python's built-in logging library.
+~~~
+
+
+response1.py Description:
+
+~~~
+The provided Python script is designed to remotely manage a switch port on a FortiGate device based on an IP address by:
+
+Extracting an IP address from a data.json file.
+Using SSH to connect to the FortiGate device.
+Looking up the MAC address corresponding to the given IP in the ARP table.
+Fetching the switch MAC address table to find the corresponding switch and port for that MAC address.
+Disabling the port on the FortiGate-managed switch where the MAC address is located.
+~~~
+
 ## Modules
 
 - `logging`: For logging events.
@@ -56,38 +90,4 @@ This project provides a Python-based script that listens for NetFlow packets, pr
 - `xgb_classifier`: XGBoost classifier.
 - `PACKET_TIMEOUT`: Timeout for dropping undecodable packets.
 - `logger`: Logger for the script.
-
-
-
-any_detect.py description:
-
-~~~
-NetFlow Packet Collection: The script listens for incoming NetFlow packets on a specified IP address and port (in this case, 127.0.0.1:2055), collects them, and processes the flow data.
-
-Anomaly Detection: The script uses three machine learning models to detect anomalies in the NetFlow data:
-
-Isolation Forest: Used for detecting anomalies in the network traffic.
-Local Outlier Factor (LOF): A novelty detection algorithm.
-XGBoost: A powerful gradient boosting classifier.
-Initial Training: If no pre-trained models are found (IsolationForestModel.pkl, LocalOutlayerModel.pkl, XgbModel.pkl, and Model_scaler.pkl), the script collects a certain number of NetFlow packets (packeges_to_learn = 1,000,000) and trains the models for the first time. Once trained, the models are saved to disk for future use.
-
-Real-Time Prediction: The script processes incoming NetFlow data in real-time, and the trained models are used to predict whether the data contains any anomalies.
-
-Scheduled Retraining: The script can retrain the models at regular intervals (every 2 hours by default) using newly collected data.
-
-Logging: The script logs its progress and outputs useful debugging information using Python's built-in logging library.
-~~~
-
-
-response1.py Description:
-
-~~~
-The provided Python script is designed to remotely manage a switch port on a FortiGate device based on an IP address by:
-
-Extracting an IP address from a data.json file.
-Using SSH to connect to the FortiGate device.
-Looking up the MAC address corresponding to the given IP in the ARP table.
-Fetching the switch MAC address table to find the corresponding switch and port for that MAC address.
-Disabling the port on the FortiGate-managed switch where the MAC address is located.
-~~~
 
