@@ -5,9 +5,8 @@ This project provides a Python-based script that listens for NetFlow packets, pr
 
 
 
-any_detect.py description:
+## any_detect.py description:
 
-~~~
 NetFlow Packet Collection: The script listens for incoming NetFlow packets on a specified IP address and port (in this case, 127.0.0.1:2055), collects them, and processes the flow data.
 
 Anomaly Detection: The script uses three machine learning models to detect anomalies in the NetFlow data:
@@ -22,12 +21,10 @@ Real-Time Prediction: The script processes incoming NetFlow data in real-time, a
 Scheduled Retraining: The script can retrain the models at regular intervals (every 2 hours by default) using newly collected data.
 
 Logging: The script logs its progress and outputs useful debugging information using Python's built-in logging library.
-~~~
 
 
-action_script.py description:
+## action_script.py description:
 
-~~~
 The provided Python script is designed to remotely manage a switch port on a FortiGate device based on an IP address by:
 
 Extracting an IP address from a data.json file.
@@ -35,7 +32,6 @@ Using SSH to connect to the FortiGate device.
 Looking up the MAC address corresponding to the given IP in the ARP table.
 Fetching the switch MAC address table to find the corresponding switch and port for that MAC address.
 Disabling the port on the FortiGate-managed switch where the MAC address is located.
-~~~
 
 ## Modules
 
