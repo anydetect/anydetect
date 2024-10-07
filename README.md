@@ -33,6 +33,14 @@ Looking up the MAC address corresponding to the given IP in the ARP table.
 Fetching the switch MAC address table to find the corresponding switch and port for that MAC address.
 Disabling the port on the FortiGate-managed switch where the MAC address is located.
 
+## Netflow_Replyer.ipynb
+Purpose: The notebook includes a Python script to replay an nfcapd (NetFlow capture) file using the nfreplay command. It sends the replayed data to a specified IP and port.
+
+Key Functions:
+
+replay_nfcapd_file: This function replays a NetFlow capture file (nfcapd) to a destination IP and port using the nfreplay tool. It captures output and handles errors during the process.
+A call to this function is made with the file nfcapd.202409252000 sent to 127.0.0.1 on port 2055
+
 ## Modules
 
 - `logging`: For logging events.
