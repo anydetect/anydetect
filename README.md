@@ -4,7 +4,6 @@ Anomaly Detection Script by ML and active response
 This project provides a Python script for detecting network anomalies using machine learning. It listens for NetFlow packets, processes them, and uses the IsolationForest algorithm for real-time anomaly detection, initial model training, and scheduled retraining.
 
 
-
 ## any_detect.py description:
 
 NetFlow Packet Collection: The script listens for incoming NetFlow packets on a specified IP address and port (in this case, 127.0.0.1:2055), collects them, and processes the flow data.
