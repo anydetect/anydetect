@@ -52,6 +52,11 @@ Markdown cells: These cells often contain text instructions, explanations, or co
 Output cells: If any code cells are executed, their results (such as printed text, graphs, or other outputs) are shown here.
 
 
+## config.ini
+
+
+
+
 ## Modules
 
 - `logging`: For logging events.
