@@ -41,6 +41,17 @@ Key Functions:
 replay_nfcapd_file: This function replays a NetFlow capture file (nfcapd) to a destination IP and port using the nfreplay tool. It captures output and handles errors during the process.
 A call to this function is made with the file nfcapd.202409252000 sent to 127.0.0.1 on port 2055
 
+##  Read_dump_file.ipynb description:
+
+Jupyter Notebook that contains code, possibly related to reading and processing NetFlow data or something similar based on your earlier script. Since it's a .ipynb file, it could include Python code cells, text descriptions (Markdown), and output cells.
+
+Here are the likely contents you can expect in a Jupyter notebook:
+
+Code cells: These cells contain Python code or any other supported languages. The code could be for reading a file, processing data, or generating output.
+Markdown cells: These cells often contain text instructions, explanations, or comments about the code.
+Output cells: If any code cells are executed, their results (such as printed text, graphs, or other outputs) are shown here.
+
+
 ## Modules
 
 - `logging`: For logging events.
