@@ -1,0 +1,14 @@
+joblib==1.4.2
+netflow==0.12.2
+numpy==2.1.2
+nvidia-nccl-cu12==2.23.4
+pandas==2.2.3
+python-dateutil==2.9.0.post0
+pytz==2024.2
+schedule==1.2.2
+scikit-learn==1.5.2
+scipy==1.14.1
+six==1.16.0
+threadpoolctl==3.5.0
+tzdata==2024.2
+xgboost==2.1.1
