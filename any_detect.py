@@ -35,7 +35,7 @@ ip_address = "127.0.0.1"
 port = 2055
 
 isInitialTrain = False
-packeges_to_learn = 1000000 #Will collect qty of packeges to learn
+packeges_to_learn = 10000 #Will collect qty of packeges to learn
 #Folder where detected anomaly will be saved
 saveAnomalyPath = "results"
 
@@ -162,41 +162,45 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
    
 
     def run(self):
+        def predict_model(model, data):
+            return model.predict(data)
+    
         try:
-            global clf
-            global lof
+            global clf, lof
             while not self._shutdown.is_set():
                 try:
-                    # 0.5s delay to limit CPU usage while waiting for new packets
-                    pkt = self.input_process_q.get(block=True, timeout=0.5)  # type: df
+                    pkt = self.input_process_q.get(block=True, timeout=0.5)
                 except queue.Empty:
                     continue
+                df_load = pd.DataFrame(pkt, dtype=object)
+                norm_data = self.normalize_data(df_load)
                 
-                df_load = pd.DataFrame(pkt,dtype=object)
-                norm_data= self.normalize_data(df_load)
-             
-                result_isf = clf.predict(norm_data)
-                result_lof = lof.predict(norm_data)
-                result_xgb = xgb_classifier.predict(norm_data)
-
-                #If anomaly is detected do work
-                if len(result_isf[result_isf == -1]) > 0 or len(result_lof[result_lof==-1])>0 or len(result_xgb[result_xgb==1])>0:
+                models = [clf, lof, xgb_classifier]
+                results = [None] * len(models)
+                threads = [
+                    threading.Thread(target=lambda i, model: results.__setitem__(i, predict_model(model, norm_data)), args=(i, model))
+                    for i, model in enumerate(models)
+                ]
+                
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join()
+                
+                result_isf, result_lof, result_xgb = results
+                
+                if any(len(result[result == -1]) > 0 for result in [result_isf, result_lof]) or len(result_xgb[result_xgb == 1]) > 0:
                     df_load['predict_isf'] = result_isf
                     df_load['predict_lof'] = result_lof
                     df_load['predict_xgb'] = result_xgb
-
                     self.do_action(df_load)
-
                     clf.n_estimators += 1
-                    clf.fit(norm_data,[1])
+                    clf.fit(norm_data, [1])
                 else:
                     clf.n_estimators += 1
-                    clf.fit(norm_data,[0])
-
+                    clf.fit(norm_data, [0])
                     self.output_process_q.put(pkt)
-
         finally:
-            # Only reached when while loop ends
             self.collect_process.stop()
             self._shutdown.set()
 
