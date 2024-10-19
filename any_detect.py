@@ -35,9 +35,12 @@ ip_address = "127.0.0.1"
 port = 2055
 
 isInitialTrain = False
-packeges_to_learn = 10000 #Will collect qty of packeges to learn
+packeges_to_learn = 1000000 #Will collect qty of packeges to learn
 #Folder where detected anomaly will be saved
 saveAnomalyPath = "results"
+
+file_path = 'white_list_ips.json' #File with white list ip addresses to disable act of active response 
+white_list_ip_addresses = [] #List of white list ip addresses
 
 #Retrain schedule settings
 sceduled_df = pd.DataFrame(dtype=object)
@@ -50,6 +53,9 @@ start_retrain_every = 2
 
 # Check whether the specified path exists or not
 isExist = os.path.exists(saveAnomalyPath)
+
+
+
 if not isExist:
     # Create a new directory because it does not exist
     os.makedirs(saveAnomalyPath)
@@ -61,7 +67,7 @@ if not os.path.exists('IsolationForestModel.pkl') or not os.path.exists('Model_s
 if isInitialTrain:
     scaler = RobustScaler()
     clf = IsolationForest(random_state=47,n_jobs=-1, contamination=0.05,n_estimators=100,warm_start=True)
-    lof = LocalOutlierFactor(n_jobs=-1, n_neighbors=20, contamination=0.01,novelty=True)
+    lof = LocalOutlierFactor(n_jobs=-1, n_neighbors=20, contamination=0.001,novelty=True)
     xgb_classifier = xgb.XGBClassifier(objective='binary:logistic', n_estimators=500, random_state=42)
 else:
     # Load scaler
@@ -92,6 +98,19 @@ ch = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+
+def read_ips_from_file():
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            ip_addresses = [entry['ip'] for entry in data]
+        return ip_addresses
+    else:
+        return []
+
+white_list_ip_addresses = read_ips_from_file() #Getting white list ip addresses
+
+print(white_list_ip_addresses)
 
 class QueuingRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
@@ -159,7 +178,6 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
         self.collect_process.start()
         self._shutdown = threading.Event()
         super().__init__()
-   
 
     def run(self):
         def predict_model(model, data):
@@ -209,7 +227,12 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
     def do_action(self, anomaly_details):
         print('Anomaly detected at:')
         print(anomaly_details)
-        self.write_to_file(anomaly_details)
+        ip_address = anomaly_details[0][0] #'IPV4_SRC_ADDR'
+
+        if ip_address not in white_list_ip_addresses:
+            self.write_to_file(anomaly_details)
+        else:
+            print(f'IP address {ip_address} is in the white list. No action needed.')
 
     def write_to_file(self, anomaly_details):
         data = {}
@@ -392,7 +415,6 @@ def do_train_job(df_data):
     X = standartized_data
     y = lst = [0] * len(standartized_data)
 
-
     clf_new = IsolationForest(random_state=47,n_jobs=-1, contamination=0.05,n_estimators=1000,warm_start=True)
     lof_new = LocalOutlierFactor(n_jobs=-1, n_neighbors=20, contamination=0.01,novelty=True)
     xgb_classifier_new = xgb.XGBClassifier(objective='binary:logistic', n_estimators=500, random_state=42)
@@ -470,7 +492,10 @@ def validate(y,result):
 #Method which scheduler starts 
 def start_retrain_thread():
     global sceduled_df
-    
+    global white_list_ip_addresses
+
+    white_list_ip_addresses = read_ips_from_file() #Reload white list ip addresses
+
     if sceduled_df.empty:
         print('DataFrame for scheduled train is empty!')
     else:
@@ -479,6 +504,7 @@ def start_retrain_thread():
 
         thread = threading.Thread(target = do_train_job, args=(sceduled_df,))
         thread.start()
+
    
 
 
