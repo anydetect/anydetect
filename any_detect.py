@@ -39,8 +39,8 @@ packeges_to_learn = 1000000 #Will collect qty of packeges to learn
 #Folder where detected anomaly will be saved
 saveAnomalyPath = "results"
 
-file_path = 'white_list_ips.json' #File with white list ip addresses to disable act of active response 
-white_list_ip_addresses = [] #List of white list ip addresses
+file_path = 'allow_list_ips.json' #File with white list ip addresses to disable act of active response 
+allow_list_ip_addresses = [] #List of white list ip addresses
 
 #Retrain schedule settings
 sceduled_df = pd.DataFrame(dtype=object)
@@ -92,7 +92,6 @@ ParsedPacket = namedtuple('ParsedPacket', ['ts', 'client', 'export'])
 # Amount of time to wait before dropping an undecodable ExportPacket
 PACKET_TIMEOUT = 60 * 60
 
-
 logger = logging.getLogger("netflow-collector")
 ch = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
@@ -108,9 +107,9 @@ def read_ips_from_file():
     else:
         return []
 
-white_list_ip_addresses = read_ips_from_file() #Getting white list ip addresses
+allow_list_ip_addresses = read_ips_from_file() #Getting white list ip addresses
 
-print(white_list_ip_addresses)
+print(allow_list_ip_addresses)
 
 class QueuingRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
@@ -229,10 +228,10 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
         print(anomaly_details)
         ip_address = anomaly_details[0][0] #'IPV4_SRC_ADDR'
 
-        if ip_address not in white_list_ip_addresses:
+        if ip_address not in allow_list_ip_addresses:
             self.write_to_file(anomaly_details)
         else:
-            print(f'IP address {ip_address} is in the white list. No action needed.')
+            print(f'IP address {ip_address} is in the allow list. No action needed.')
 
     def write_to_file(self, anomaly_details):
         data = {}
@@ -492,9 +491,9 @@ def validate(y,result):
 #Method which scheduler starts 
 def start_retrain_thread():
     global sceduled_df
-    global white_list_ip_addresses
+    global allow_list_ip_addresses
 
-    white_list_ip_addresses = read_ips_from_file() #Reload white list ip addresses
+    allow_list_ip_addresses = read_ips_from_file() #Reload white list ip addresses
 
     if sceduled_df.empty:
         print('DataFrame for scheduled train is empty!')

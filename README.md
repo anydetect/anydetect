@@ -72,7 +72,7 @@ Output cells: If any code cells are executed, their results (such as printed tex
 Switch credentials 
 
 
-## white_list_ips.json description:
+## allow_list_ips.json description:
 
 List of IP addresses to not act on active response
 ```
