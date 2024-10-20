@@ -54,8 +54,6 @@ start_retrain_every = 2
 # Check whether the specified path exists or not
 isExist = os.path.exists(saveAnomalyPath)
 
-
-
 if not isExist:
     # Create a new directory because it does not exist
     os.makedirs(saveAnomalyPath)
@@ -119,7 +117,6 @@ class QueuingRequestHandler(socketserver.BaseRequestHandler):
             "Received %d bytes of data from %s", len(data), self.client_address
         )
 
-
 class QueuingUDPListener(socketserver.ThreadingUDPServer):
     """A threaded UDP server that adds a (time, data) tuple to a queue for
     every request it sees
@@ -166,9 +163,7 @@ class ThreadedNetflowCollectProcessor(threading.Thread):
 
     def join(self, timeout=None):
         super().join(timeout=timeout)
-
-
-        
+       
 class ThreadedNetFlowPredictProcessor(threading.Thread):
     def __init__(self):
         self.input_process_q = queue.Queue()
@@ -271,7 +266,6 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
     def join(self, timeout=None):
         self.collect_process.join(timeout=timeout)
         super().join(timeout=timeout)
-
 
 class ThreadedNetFlowListener(threading.Thread):
     """A thread that listens for incoming NetFlow packets, processes them, and
@@ -401,7 +395,6 @@ def standartize_process(df):
 
     return std_df
 
-
 #Re train new model in separate thread
 def do_train_job(df_data):
     global clf
@@ -482,7 +475,6 @@ def initial_train_predict(raw_data):
     print("Validate XGBoost factor model")
     validate(y,result_xgb)
         
-
 #Validation result for trained data
 def validate(y,result):
     test_accuracy = metrics.accuracy_score(y,result)
@@ -503,9 +495,6 @@ def start_retrain_thread():
 
         thread = threading.Thread(target = do_train_job, args=(sceduled_df,))
         thread.start()
-
-   
-
 
 def start_listening():
     listener = ThreadedNetFlowListener(ip_address, port)
