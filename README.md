@@ -78,13 +78,16 @@ List of IP addresses to not act on active response
 ```
 [
     {
-        "ip": "192.168.0.1"
+        "ip": "192.168.0.1",
+        "description" : "free text"
     },
     {
-        "ip": "1192.168.0.2"
+        "ip": "192.168.0.2",
+        "description":"free text 1"
     },
     {
-        "ip": "192.168.0.3"
+        "ip": "192.168.0.3",
+        "description":"free text 2"
     }
 ]
 ```

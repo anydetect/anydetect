@@ -226,7 +226,7 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
         if ip_address not in allow_list_ip_addresses:
             self.write_to_file(anomaly_details)
         else:
-            print(f'IP address {ip_address} is in the allow list. No action needed.')
+            print(f'IP address {ip_address}  is in the allow list. No action needed.')
 
     def write_to_file(self, anomaly_details):
         data = {}
@@ -236,6 +236,7 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
         data['DST_PORT']=str(anomaly_details[3][0])
         data['Predict_ISF']=str(anomaly_details['predict_isf'][0])
         data['Predict_LOF']=str(anomaly_details['predict_lof'][0])
+        data['Predict_LOF']=str(anomaly_details['predict_xgb'][0])
 
         with open("{path}/{date:%d_%m_%Y_%H_%M_%S}.json".format(date=datetime.datetime.now(),path=saveAnomalyPath), 'w', encoding='utf-8') as jsonf:
             jsonf.write(json.dumps(data, indent=4))
