@@ -73,6 +73,28 @@ Output cells: If any code cells are executed, their results (such as printed tex
 Switch credentials 
 
 
+## allow_list_ips.json description:
+
+List of IP addresses to not act on active response
+```
+[
+    {
+        "ip": "192.168.0.1",
+        "description" : "free text"
+    },
+    {
+        "ip": "192.168.0.2",
+        "description":"free text 1"
+    },
+    {
+        "ip": "192.168.0.3",
+        "description":"free text 2"
+    }
+]
+```
+
+
+
 ## Modules
 
 - `logging`: For logging events.

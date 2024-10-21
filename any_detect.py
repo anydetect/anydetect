@@ -39,6 +39,9 @@ packeges_to_learn = 1000000 #Will collect qty of packeges to learn
 #Folder where detected anomaly will be saved
 saveAnomalyPath = "results"
 
+file_path = 'allow_list_ips.json' #File with white list ip addresses to disable act of active response 
+allow_list_ip_addresses = [] #List of white list ip addresses
+
 #Retrain schedule settings
 sceduled_df = pd.DataFrame(dtype=object)
 
@@ -50,6 +53,7 @@ start_retrain_every = 2
 
 # Check whether the specified path exists or not
 isExist = os.path.exists(saveAnomalyPath)
+
 if not isExist:
     # Create a new directory because it does not exist
     os.makedirs(saveAnomalyPath)
@@ -61,7 +65,7 @@ if not os.path.exists('IsolationForestModel.pkl') or not os.path.exists('Model_s
 if isInitialTrain:
     scaler = RobustScaler()
     clf = IsolationForest(random_state=47,n_jobs=-1, contamination=0.05,n_estimators=100,warm_start=True)
-    lof = LocalOutlierFactor(n_jobs=-1, n_neighbors=20, contamination=0.01,novelty=True)
+    lof = LocalOutlierFactor(n_jobs=-1, n_neighbors=20, contamination=0.001,novelty=True)
     xgb_classifier = xgb.XGBClassifier(objective='binary:logistic', n_estimators=500, random_state=42)
 else:
     # Load scaler
@@ -86,12 +90,24 @@ ParsedPacket = namedtuple('ParsedPacket', ['ts', 'client', 'export'])
 # Amount of time to wait before dropping an undecodable ExportPacket
 PACKET_TIMEOUT = 60 * 60
 
-
 logger = logging.getLogger("netflow-collector")
 ch = logging.StreamHandler()
 formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 ch.setFormatter(formatter)
 logger.addHandler(ch)
+
+def read_ips_from_file():
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
+            data = json.load(file)
+            ip_addresses = [entry['ip'] for entry in data]
+        return ip_addresses
+    else:
+        return []
+
+allow_list_ip_addresses = read_ips_from_file() #Getting white list ip addresses
+
+print(allow_list_ip_addresses)
 
 class QueuingRequestHandler(socketserver.BaseRequestHandler):
     def handle(self):
@@ -100,7 +116,6 @@ class QueuingRequestHandler(socketserver.BaseRequestHandler):
         logger.debug(
             "Received %d bytes of data from %s", len(data), self.client_address
         )
-
 
 class QueuingUDPListener(socketserver.ThreadingUDPServer):
     """A threaded UDP server that adds a (time, data) tuple to a queue for
@@ -148,9 +163,7 @@ class ThreadedNetflowCollectProcessor(threading.Thread):
 
     def join(self, timeout=None):
         super().join(timeout=timeout)
-
-
-        
+       
 class ThreadedNetFlowPredictProcessor(threading.Thread):
     def __init__(self):
         self.input_process_q = queue.Queue()
@@ -159,44 +172,47 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
         self.collect_process.start()
         self._shutdown = threading.Event()
         super().__init__()
-   
 
     def run(self):
+        def predict_model(model, data):
+            return model.predict(data)
+    
         try:
-            global clf
-            global lof
+            global clf, lof
             while not self._shutdown.is_set():
                 try:
-                    # 0.5s delay to limit CPU usage while waiting for new packets
-                    pkt = self.input_process_q.get(block=True, timeout=0.5)  # type: df
+                    pkt = self.input_process_q.get(block=True, timeout=0.5)
                 except queue.Empty:
                     continue
+                df_load = pd.DataFrame(pkt, dtype=object)
+                norm_data = self.normalize_data(df_load)
                 
-                df_load = pd.DataFrame(pkt,dtype=object)
-                norm_data= self.normalize_data(df_load)
-             
-                result_isf = clf.predict(norm_data)
-                result_lof = lof.predict(norm_data)
-                result_xgb = xgb_classifier.predict(norm_data)
-
-                #If anomaly is detected do work
-                if len(result_isf[result_isf == -1]) > 0 or len(result_lof[result_lof==-1])>0 or len(result_xgb[result_xgb==1])>0:
+                models = [clf, lof, xgb_classifier]
+                results = [None] * len(models)
+                threads = [
+                    threading.Thread(target=lambda i, model: results.__setitem__(i, predict_model(model, norm_data)), args=(i, model))
+                    for i, model in enumerate(models)
+                ]
+                
+                for thread in threads:
+                    thread.start()
+                for thread in threads:
+                    thread.join()
+                
+                result_isf, result_lof, result_xgb = results
+                
+                if any(len(result[result == -1]) > 0 for result in [result_isf, result_lof]) or len(result_xgb[result_xgb == 1]) > 0:
                     df_load['predict_isf'] = result_isf
                     df_load['predict_lof'] = result_lof
                     df_load['predict_xgb'] = result_xgb
-
                     self.do_action(df_load)
-
                     clf.n_estimators += 1
-                    clf.fit(norm_data,[1])
+                    clf.fit(norm_data, [1])
                 else:
                     clf.n_estimators += 1
-                    clf.fit(norm_data,[0])
-
+                    clf.fit(norm_data, [0])
                     self.output_process_q.put(pkt)
-
         finally:
-            # Only reached when while loop ends
             self.collect_process.stop()
             self._shutdown.set()
 
@@ -205,7 +221,12 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
     def do_action(self, anomaly_details):
         print('Anomaly detected at:')
         print(anomaly_details)
-        self.write_to_file(anomaly_details)
+        ip_address = anomaly_details[0][0] #'IPV4_SRC_ADDR'
+
+        if ip_address not in allow_list_ip_addresses:
+            self.write_to_file(anomaly_details)
+        else:
+            print(f'IP address {ip_address}  is in the allow list. No action needed.')
 
     def write_to_file(self, anomaly_details):
         data = {}
@@ -215,6 +236,7 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
         data['DST_PORT']=str(anomaly_details[3][0])
         data['Predict_ISF']=str(anomaly_details['predict_isf'][0])
         data['Predict_LOF']=str(anomaly_details['predict_lof'][0])
+        data['Predict_LOF']=str(anomaly_details['predict_xgb'][0])
 
         with open("{path}/{date:%d_%m_%Y_%H_%M_%S}.json".format(date=datetime.datetime.now(),path=saveAnomalyPath), 'w', encoding='utf-8') as jsonf:
             jsonf.write(json.dumps(data, indent=4))
@@ -245,7 +267,6 @@ class ThreadedNetFlowPredictProcessor(threading.Thread):
     def join(self, timeout=None):
         self.collect_process.join(timeout=timeout)
         super().join(timeout=timeout)
-
 
 class ThreadedNetFlowListener(threading.Thread):
     """A thread that listens for incoming NetFlow packets, processes them, and
@@ -375,7 +396,6 @@ def standartize_process(df):
 
     return std_df
 
-
 #Re train new model in separate thread
 def do_train_job(df_data):
     global clf
@@ -387,7 +407,6 @@ def do_train_job(df_data):
     print("Start retrain Thread")
     X = standartized_data
     y = lst = [0] * len(standartized_data)
-
 
     clf_new = IsolationForest(random_state=47,n_jobs=-1, contamination=0.05,n_estimators=1000,warm_start=True)
     lof_new = LocalOutlierFactor(n_jobs=-1, n_neighbors=20, contamination=0.01,novelty=True)
@@ -457,7 +476,6 @@ def initial_train_predict(raw_data):
     print("Validate XGBoost factor model")
     validate(y,result_xgb)
         
-
 #Validation result for trained data
 def validate(y,result):
     test_accuracy = metrics.accuracy_score(y,result)
@@ -466,7 +484,10 @@ def validate(y,result):
 #Method which scheduler starts 
 def start_retrain_thread():
     global sceduled_df
-    
+    global allow_list_ip_addresses
+
+    allow_list_ip_addresses = read_ips_from_file() #Reload white list ip addresses
+
     if sceduled_df.empty:
         print('DataFrame for scheduled train is empty!')
     else:
@@ -475,8 +496,6 @@ def start_retrain_thread():
 
         thread = threading.Thread(target = do_train_job, args=(sceduled_df,))
         thread.start()
-   
-
 
 def start_listening():
     listener = ThreadedNetFlowListener(ip_address, port)
