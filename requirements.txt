@@ -1,6 +1,6 @@
 joblib==1.4.2
 netflow==0.12.2
-numpy==2.1.2
+numpy==2.2.1
 nvidia-nccl-cu12==2.23.4
 pandas==2.2.3
 python-dateutil==2.9.0.post0
