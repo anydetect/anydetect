@@ -541,12 +541,151 @@ def start_listening():
         predictor.join()
         print("Stopped!")    
 
+class ThreadedPacketbeatReader(threading.Thread):
+    """A thread that reads packetbeat files, processes them, and
+    makes them available to consumers.
+
+    - When initialized, will start reading Packetbeat packets on the provided location.
+    - When started, will start processing and parsing queued packets.
+    - When stopped, will stop processing.
+    - When joined, will wait for the listener to exit
+    """
+
+    RawPacket = namedtuple("RawPacket", ["ts", "client", "data"])
+    ParsedPacket = namedtuple("ParsedPacket", ["ts", "client", "export"])
+
+    def __init__(self):
+        logger.info("Starting the Packetbeta reader")
+        self.output = queue.Queue()
+        self.thread = threading.Thread()
+        self.thread.start()
+        self._shutdown = threading.Event()
+        super().__init__()
+
+    def get(self, block=True, timeout=None) -> ParsedPacket:
+        """Get a processed flow.
+
+        If optional args 'block' is true and 'timeout' is None (the default),
+        block if necessary until a flow is available. If 'timeout' is
+        a non-negative number, it blocks at most 'timeout' seconds and raises
+        the queue.Empty exception if no flow was available within that time.
+        Otherwise ('block' is false), return a flow if one is immediately
+        available, else raise the queue.Empty exception ('timeout' is ignored
+        in that case).
+        """
+        return self.output.get(block, timeout)
+
+    def run(self):
+        with open("data/packetbeat-flow-20241028.ndjson") as file:
+            raw_flows = file.readlines()
+        for raw_line in raw_flows:
+            raw_flow = json.loads(raw_line)
+            src_ip = raw_flow.get("source").get("ip")
+            src_port = raw_flow.get("source").get("port")
+            dst_ip = raw_flow.get("destination").get("ip")
+            dst_port = raw_flow.get("destination").get("port")
+            proto = raw_flow.get("network").get("transport")
+            in_bytes = raw_flow.get("network").get("bytes")
+            out_bytes = raw_flow.get("network").get("bytes")
+            in_packets = raw_flow.get("network").get("packets")
+            out_packets = raw_flow.get("network").get("packets")
+            o = 0
+            duration = raw_flow.get("event").get("duration")
+            version = 9
+            #data = f"{src_ip},{src_port},{dst_ip},{dst_port},{proto},{in_bytes},{out_bytes},{in_packets},{out_packets},{o},{duration},{version}"
+            data = f"{src_ip},{src_port},{dst_ip},{dst_port},{proto},{in_bytes},{out_bytes},{in_packets},{out_packets},{duration}"
+            if "None" not in data:
+                #print(data)
+                self.output.put(data)
+                # inc_data="{IPV4_SRC_ADDR},{L4_SRC_PORT},{IPV4_DST_ADDR},{L4_DST_PORT},{PROTOCOL},{IN_BYTES},{OUT_BYTES},{IN_PKTS},{OUT_PKTS},0,{fduration},{fversion}".format(**f.data,fduration=duration,fversion=nf_version)
+
+    def stop(self):
+        #logger.info("Shutting down the NetFlow listener")
+        self._shutdown.set()
+
+    def join(self, timeout=None):
+        self.thread.join(timeout=timeout)
+        super().join(timeout=timeout)
+
+def start_packetbeat_reading():
+    reader = ThreadedPacketbeatReader()
+    predictor = ThreadedNetFlowPredictProcessor()
+
+    schedule.every(start_retrain_every).hours.do(start_retrain_thread)
+
+    print("Listening Packetbeat packets")
+
+    reader.start()  # start processing packets
+    predictor.start()  # start predict process
+    try:
+        # run scheduler panding
+        while True:
+            schedule.run_pending()
+            inc_data = reader.get()
+            predictor.put([inc_data.split(",")])
+
+    finally:
+        print("Stopping...")
+        reader.stop()
+        reader.join()
+        predictor.stop()
+        predictor.join()
+        print("Stopped!")
+
+def run_with_packetbeat():
+    global isInitialTrain
+    try:
+        if isInitialTrain:
+            collected_packeges = []
+            reader_train = ThreadedPacketbeatReader()
+            collected_packeges = []
+            print("Reading NetFlow from source to train")
+            reader_train.start()  # start reading packets
+
+            try:
+                start = time.time()
+                while True:
+                    inc_data = reader_train.get()
+                    # inc_data="{IPV4_SRC_ADDR},{L4_SRC_PORT},{IPV4_DST_ADDR},{L4_DST_PORT},{PROTOCOL},{IN_BYTES},{OUT_BYTES},{IN_PKTS},{OUT_PKTS},0,{fduration},{fversion}".format(**f.data,fduration=duration,fversion=nf_version)
+                    if len(collected_packeges) <= packeges_to_learn:
+                        collected_packeges.append(inc_data.split(","))
+
+                    if len(collected_packeges) > packeges_to_learn:
+                        end = time.time()
+                        print("Time taken to collect packages: {0}".format(end - start))
+                        print("Packages to train: {0}".format(len(collected_packeges)))
+                        break
+            finally:
+                print("Stopping collecting and begin training")
+                reader_train.stop()
+                reader_train.join()
+
+                if len(collected_packeges) > 0:
+                    initial_train_predict(collected_packeges)
+                    collected_packeges.clear()
+                    print("Training Finished!")
+                    print("-----------------")
+                    print("Begin listening and analysing thread !!")
+                    isInitialTrain = False
+
+                    start_packetbeat_reading()
+                else:
+                    print("Packeges to train are null please restart")
+
+        else:
+            start_packetbeat_reading()
+
+    except KeyboardInterrupt:
+        #logger.info("Received KeyboardInterrupt, passing through")
+        print("Received KeyboardInterrupt, passing through")
+    pass
 
 if __name__ == "netflow.collector":
     logger.error("The collector is currently meant to be used as a CLI tool only.")
     
 if __name__ == "__main__":
-    
+    run_with_packetbeat()
+    """
     try:
         if isInitialTrain:
             collected_packeges=[]
@@ -607,3 +746,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Received KeyboardInterrupt, passing through")
     pass
+    """
