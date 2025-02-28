@@ -1,0 +1,7 @@
+joblib
+pandas
+scikit-learn
+numpy
+schedule
+threadpoolctl
+confluent_kafka
